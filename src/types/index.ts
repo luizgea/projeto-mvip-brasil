@@ -23,6 +23,8 @@ export interface TerrainData {
     minima: number;
     maxima: number;
   };
+  coordinates?: [number, number]; // [latitude, longitude]
+  geometry?: any; // GeoJSON geometry for the terrain
 }
 
 // Tipos para parâmetros da edificação

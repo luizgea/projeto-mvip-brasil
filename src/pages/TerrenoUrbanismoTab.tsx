@@ -19,7 +19,7 @@ const TerrenoUrbanismoTab: React.FC<TerrenoUrbanismoTabProps> = ({
   onUrbanParamsChange,
   onTerrainDataChange,
 }) => {
-  const handleAddressFound = (address: string) => {
+  const handleAddressFound = (address: string, coordinates: [number, number]) => {
     // Em uma implementação real, os dados seriam buscados de uma API externa
     // Aqui estamos apenas simulando o retorno de dados
     const mockTerrainData: TerrainData = {
@@ -31,6 +31,20 @@ const TerrenoUrbanismoTab: React.FC<TerrenoUrbanismoTabProps> = ({
         minima: 850,
         maxima: 860,
       },
+      coordinates: coordinates,
+      // Mock GeoJSON for visualization
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [coordinates[1] - 0.001, coordinates[0] - 0.001],
+            [coordinates[1] + 0.001, coordinates[0] - 0.001],
+            [coordinates[1] + 0.001, coordinates[0] + 0.001],
+            [coordinates[1] - 0.001, coordinates[0] + 0.001],
+            [coordinates[1] - 0.001, coordinates[0] - 0.001]
+          ]
+        ]
+      }
     };
     
     onTerrainDataChange(mockTerrainData);
@@ -93,7 +107,10 @@ const TerrenoUrbanismoTab: React.FC<TerrenoUrbanismoTabProps> = ({
           </div>
 
           <div className="lg:col-span-2">
-            <MapView />
+            <MapView 
+              coordinates={terrainData?.coordinates || [-19.9167, -43.9345]}
+              terrainData={terrainData}
+            />
           </div>
         </div>
 

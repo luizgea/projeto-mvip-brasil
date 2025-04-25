@@ -6,7 +6,7 @@ import { Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface AddressSearchInputProps {
-  onAddressFound: (address: string) => void;
+  onAddressFound: (address: string, coordinates: [number, number]) => void;
 }
 
 const AddressSearchInput: React.FC<AddressSearchInputProps> = ({ onAddressFound }) => {
@@ -27,21 +27,31 @@ const AddressSearchInput: React.FC<AddressSearchInputProps> = ({ onAddressFound 
     setIsSearching(true);
     
     try {
-      // Em uma implementação real, aqui seria feita uma chamada à API de geocoding
-      // Por exemplo: const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ", Belo Horizonte, Brasil")}`);
+      // Usar Nominatim OpenStreetMap para geocoding
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ", Belo Horizonte, Brasil")}&limit=1`
+      );
       
-      // Simulação de busca (em uma aplicação real, isso seria uma chamada à API)
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const data = await response.json();
       
-      // Sucesso simulado
-      toast({
-        title: "Endereço encontrado",
-        description: "Parâmetros urbanísticos carregados com sucesso.",
-      });
-      
-      // Aqui seria processada a resposta da API e extraída a coordenada
-      // Por enquanto, apenas chamamos o callback com o endereço digitado
-      onAddressFound(address);
+      if (data && data.length > 0) {
+        const result = data[0];
+        const coordinates: [number, number] = [parseFloat(result.lat), parseFloat(result.lon)];
+        
+        toast({
+          title: "Endereço encontrado",
+          description: "Parâmetros urbanísticos carregados com sucesso.",
+        });
+        
+        // Chama o callback com o endereço e as coordenadas
+        onAddressFound(address, coordinates);
+      } else {
+        toast({
+          title: "Endereço não encontrado",
+          description: "Não foi possível encontrar o endereço. Tente ser mais específico.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       toast({
         title: "Erro na busca",

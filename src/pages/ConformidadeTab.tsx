@@ -28,7 +28,6 @@ const ConformidadeTab: React.FC<ConformidadeTabProps> = ({
   fireSafetyItems,
   onFireSafetyItemChange
 }) => {
-  // Agora usamos diretamente o analysisResult e fireSafetyItems passados via props
   return (
     <div className="container mx-auto py-6 animate-fade-in">
       <div className="max-w-3xl mx-auto mb-8">

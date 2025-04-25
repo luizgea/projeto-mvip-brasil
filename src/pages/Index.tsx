@@ -28,7 +28,7 @@ const Index = () => {
   // Estado para dados do terreno
   const [terrainData, setTerrainData] = useState<TerrainData | null>(null);
   
-  // Estado para dimensões do edifício - CENTRALIZADO AGORA
+  // Estado para dimensões do edifício - CENTRALIZADO
   const [buildingWidth, setBuildingWidth] = useState(15);
   const [buildingLength, setBuildingLength] = useState(25);
   const [buildingHeight, setBuildingHeight] = useState(30);
@@ -78,43 +78,7 @@ const Index = () => {
   });
   
   // Estado para checklist de segurança contra incêndio
-  const [fireSafetyItems, setFireSafetyItems] = useState<FireSafetyItem[]>([
-    {
-      id: "1",
-      description: "Escada enclausurada",
-      applicable: true,
-      compliant: null,
-      details: "Exigido para edificações com mais de 2 pavimentos",
-    },
-    {
-      id: "2",
-      description: "Duas saídas independentes",
-      applicable: true,
-      compliant: null,
-      details: "Exigido para área construída superior a 750m²",
-    },
-    {
-      id: "3",
-      description: "Hidrantes e extintores",
-      applicable: true,
-      compliant: null,
-      details: "",
-    },
-    {
-      id: "4",
-      description: "Rota acessível e iluminada",
-      applicable: true,
-      compliant: null,
-      details: "",
-    },
-    {
-      id: "5",
-      description: "Pressurização de escada",
-      applicable: true,
-      compliant: null,
-      details: "Exigido para edificações com mais de 6 pavimentos",
-    },
-  ]);
+  const [fireSafetyItems, setFireSafetyItems] = useState<FireSafetyItem[]>([]);
 
   // Handler para alteração de setbacks
   const handleSetbackChange = (key: "front" | "back" | "left" | "right", value: number) => {
@@ -124,7 +88,7 @@ const Index = () => {
     }));
   };
 
-  // useEffect para recalcular analysisResult e fireSafetyItems quando os parâmetros mudarem
+  // useEffect para recalcular analysisResult quando os parâmetros mudarem
   useEffect(() => {
     if (terrainData) {
       // Cálculo de área construída
@@ -174,26 +138,93 @@ const Index = () => {
       };
       
       setAnalysisResult(newResult);
-
-      // Atualizar aplicabilidade de itens de segurança contra incêndio
-      const updatedFireSafetyItems = fireSafetyItems.map(item => {
-        if (item.id === "1") { // Escada enclausurada
-          return { ...item, applicable: floors > 2 };
-        } else if (item.id === "2") { // Duas saídas independentes
-          return { ...item, applicable: floorArea > 750 };
-        } else if (item.id === "5") { // Pressurização de escada
-          return { ...item, applicable: floors > 6 };
-        } else if (item.id === "6") { // Ventilação forçada
-          return { ...item, applicable: floorArea > 1000 };
-        } else if (item.id === "7") { // Sistema de alarme
-          return { ...item, applicable: floorArea > 500 };
-        }
-        return item;
-      });
-      
-      setFireSafetyItems(updatedFireSafetyItems);
     }
   }, [urbanParams, terrainData, buildingWidth, buildingLength, buildingHeight, floors, setbacks]);
+
+  // useEffect para gerar checklist de segurança contra incêndio
+  useEffect(() => {
+    if (terrainData) {
+      const floorArea = buildingWidth * buildingLength;
+      const totalBuiltArea = floorArea * floors;
+      const buildingHeightInMeters = buildingHeight;
+      
+      // Lista completa de itens de segurança contra incêndio
+      const newFireSafetyItems: FireSafetyItem[] = [
+        {
+          id: "1",
+          description: "Escada enclausurada",
+          applicable: floors > 2 || buildingHeightInMeters > 12,
+          compliant: null,
+          details: "Exigido para edificações com mais de 2 pavimentos ou altura superior a 12m",
+        },
+        {
+          id: "2",
+          description: "Duas saídas independentes",
+          applicable: floorArea > 750 || floors > 3,
+          compliant: null,
+          details: "Exigido para área construída superior a 750m² ou mais de 3 pavimentos",
+        },
+        {
+          id: "3",
+          description: "Hidrantes e extintores",
+          applicable: totalBuiltArea > 750,
+          compliant: null,
+          details: "Requisitos conforme IT-08 do CBMMG",
+        },
+        {
+          id: "4",
+          description: "Rota acessível e iluminada",
+          applicable: true,
+          compliant: null,
+          details: "Obrigatório para todas as edificações",
+        },
+        {
+          id: "5",
+          description: "Pressurização de escada",
+          applicable: floors > 6 || buildingHeightInMeters > 18,
+          compliant: null,
+          details: "Exigido para edificações com mais de 6 pavimentos ou altura superior a 18m",
+        },
+        {
+          id: "6",
+          description: "Ventilação forçada",
+          applicable: floorArea > 1000,
+          compliant: null,
+          details: "Exigido para edificações com área superior a 1000m²",
+        },
+        {
+          id: "7",
+          description: "Sistema de alarme",
+          applicable: floorArea > 500 || floors > 2,
+          compliant: null,
+          details: "Exigido para edificações com área superior a 500m² ou mais de 2 pavimentos",
+        },
+        {
+          id: "8",
+          description: "Sinalização de emergência",
+          applicable: true,
+          compliant: null,
+          details: "Obrigatório conforme NBR 13434",
+        },
+        {
+          id: "9",
+          description: "Iluminação de emergência",
+          applicable: true,
+          compliant: null,
+          details: "Obrigatório conforme NBR 10898, autonomia mínima de 1h",
+        },
+        {
+          id: "10",
+          description: "Resistência ao fogo das estruturas",
+          applicable: true,
+          compliant: null,
+          details: "Conforme NBR 15575, varia de acordo com o uso do edifício",
+        }
+      ];
+      
+      setFireSafetyItems(newFireSafetyItems);
+    }
+  }, [terrainData, buildingWidth, buildingLength, buildingHeight, floors]);
 
   // Renderiza a aba ativa
   const renderActiveTab = () => {
