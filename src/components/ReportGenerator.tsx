@@ -2,7 +2,7 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Download, FileImage, FileDwg } from "lucide-react";
+import { FileText, Download, FileImage, File } from "lucide-react";
 
 interface ReportGeneratorProps {
   onGenerateReport: () => void;
@@ -40,7 +40,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({
             Exporte plantas, cortes e vistas para formatos compatíveis com softwares CAD.
           </p>
           <Button variant="outline" onClick={onExportDWG} className="w-full mb-2">
-            <FileDwg className="h-4 w-4 mr-2" /> Exportar DWG
+            <File className="h-4 w-4 mr-2" /> Exportar DWG
           </Button>
           <Button variant="outline" onClick={onExportImages} className="w-full">
             <FileImage className="h-4 w-4 mr-2" /> Exportar Imagens

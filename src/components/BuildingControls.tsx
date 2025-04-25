@@ -23,7 +23,7 @@ interface BuildingControlsProps {
   onHeightChange: (value: number) => void;
   onFloorsChange: (value: number) => void;
   onBuildingTypeChange: (value: string) => void;
-  onSetbackChange: (key: keyof typeof setbacks, value: number) => void;
+  onSetbackChange: (key: "front" | "back" | "left" | "right", value: number) => void;
 }
 
 const BuildingControls: React.FC<BuildingControlsProps> = ({
