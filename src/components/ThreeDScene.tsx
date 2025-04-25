@@ -1,53 +1,60 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+// Corrigindo o import para OrbitControls
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
-interface ThreeDSceneProps {
-  buildingParams: {
-    width: number;
-    length: number;
-    height: number;
-    floors: number;
-    setbacks: {
-      front: number;
-      back: number;
-      left: number;
-      right: number;
-    };
+interface BuildingParams {
+  width: number;
+  length: number;
+  height: number;
+  floors: number;
+  setbacks: {
+    front: number;
+    back: number;
+    left: number;
+    right: number;
   };
 }
 
+interface ThreeDSceneProps {
+  buildingParams: BuildingParams;
+}
+
 const ThreeDScene: React.FC<ThreeDSceneProps> = ({ buildingParams }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
+  const buildingRef = useRef<THREE.Group | null>(null);
+  const terrainRef = useRef<THREE.Mesh | null>(null);
+  const animationFrameId = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!mountRef.current) return;
 
-    // Scene setup
+    // Setup
+    const width = mountRef.current.clientWidth;
+    const height = mountRef.current.clientHeight;
+
+    // Scene
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf5f5f5);
+    scene.background = new THREE.Color(0xf0f0f0);
     sceneRef.current = scene;
 
-    // Camera setup
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      containerRef.current.clientWidth / containerRef.current.clientHeight,
-      0.1,
-      1000
-    );
+    // Camera
+    const camera = new THREE.PerspectiveCamera(45, width / height, 1, 1000);
     camera.position.set(50, 50, 50);
+    camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
-    // Renderer setup
+    // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
-    containerRef.current.appendChild(renderer.domElement);
+    mountRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
     // Controls
@@ -56,112 +63,157 @@ const ThreeDScene: React.FC<ThreeDSceneProps> = ({ buildingParams }) => {
     controls.dampingFactor = 0.05;
     controlsRef.current = controls;
 
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(50, 100, 50);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(10, 100, 10);
     directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 1024;
-    directionalLight.shadow.mapSize.height = 1024;
     scene.add(directionalLight);
 
-    // Ground
-    const groundGeometry = new THREE.PlaneGeometry(200, 200);
-    const groundMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x999999,
-      side: THREE.DoubleSide,
-      roughness: 0.8
-    });
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    scene.add(ground);
-
-    // Grid helper
-    const gridHelper = new THREE.GridHelper(200, 20);
+    // Grid
+    const gridHelper = new THREE.GridHelper(100, 100);
     scene.add(gridHelper);
 
+    // Axes
+    const axesHelper = new THREE.AxesHelper(25);
+    scene.add(axesHelper);
+
+    // Terrain
+    const terrainGeometry = new THREE.PlaneGeometry(100, 100);
+    const terrainMaterial = new THREE.MeshStandardMaterial({
+      color: 0x7ec850,
+      side: THREE.DoubleSide,
+    });
+    const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+    terrain.rotation.x = -Math.PI / 2;
+    terrain.receiveShadow = true;
+    scene.add(terrain);
+    terrainRef.current = terrain;
+
+    // Building Group
+    const buildingGroup = new THREE.Group();
+    scene.add(buildingGroup);
+    buildingRef.current = buildingGroup;
+
+    // Animation loop
     const animate = () => {
-      requestAnimationFrame(animate);
-      
       if (controlsRef.current) {
         controlsRef.current.update();
       }
-      
       if (rendererRef.current && cameraRef.current && sceneRef.current) {
         rendererRef.current.render(sceneRef.current, cameraRef.current);
       }
+      animationFrameId.current = requestAnimationFrame(animate);
     };
-
-    // Handle window resize
-    const handleResize = () => {
-      if (containerRef.current && cameraRef.current && rendererRef.current) {
-        cameraRef.current.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
-        cameraRef.current.updateProjectionMatrix();
-        rendererRef.current.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
     animate();
 
-    // Cleanup
+    // Responsive resize
+    const handleResize = () => {
+      if (!mountRef.current || !cameraRef.current || !rendererRef.current) return;
+      
+      const width = mountRef.current.clientWidth;
+      const height = mountRef.current.clientHeight;
+      
+      cameraRef.current.aspect = width / height;
+      cameraRef.current.updateProjectionMatrix();
+      rendererRef.current.setSize(width, height);
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Clean up
     return () => {
+      if (animationFrameId.current !== null) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
       window.removeEventListener('resize', handleResize);
-      if (rendererRef.current && containerRef.current) {
-        containerRef.current.removeChild(rendererRef.current.domElement);
+      
+      if (mountRef.current && rendererRef.current) {
+        mountRef.current.removeChild(rendererRef.current.domElement);
+      }
+      
+      if (buildingRef.current) {
+        buildingRef.current.clear();
+      }
+      
+      if (controlsRef.current) {
+        controlsRef.current.dispose();
+      }
+      
+      if (rendererRef.current) {
+        rendererRef.current.dispose();
       }
     };
   }, []);
 
   useEffect(() => {
-    if (!sceneRef.current) return;
-    
-    // Remove previous buildings
-    sceneRef.current.children.forEach(child => {
-      if (child.name === 'building') {
-        sceneRef.current?.remove(child);
-      }
-    });
-    
-    // Calculate dimensions
-    const { width, length, height, floors, setbacks } = buildingParams;
-    const floorHeight = height / floors;
-    
-    // Create building floors with setbacks
-    for (let i = 0; i < floors; i++) {
-      const setbackFactor = 1 - (i / (floors * 2));
+    if (!buildingRef.current) return;
+
+    // Clear existing building mesh
+    while (buildingRef.current.children.length > 0) {
+      buildingRef.current.remove(buildingRef.current.children[0]);
+    }
+
+    // Floor height (average 3m per floor)
+    const floorHeight = buildingParams.height / buildingParams.floors;
+
+    // Create building floors
+    for (let i = 0; i < buildingParams.floors; i++) {
+      const floorGeometry = new THREE.BoxGeometry(
+        buildingParams.width,
+        floorHeight,
+        buildingParams.length
+      );
       
-      const floorWidth = width * setbackFactor;
-      const floorLength = length * setbackFactor;
-      
-      const geometry = new THREE.BoxGeometry(floorWidth, floorHeight, floorLength);
-      const material = new THREE.MeshStandardMaterial({ 
-        color: 0xd6bcfa, 
-        transparent: true, 
-        opacity: 0.9,
-        roughness: 0.3
+      // Different colors for different floors
+      const hue = (i / buildingParams.floors) * 0.1 + 0.6; // Blue-ish colors
+      const floorMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color().setHSL(hue, 0.5, 0.5),
+        transparent: true,
+        opacity: 0.8,
       });
       
-      const floor = new THREE.Mesh(geometry, material);
-      floor.position.y = floorHeight * (i + 0.5);
+      const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+      
+      // Position each floor
+      floor.position.y = (i * floorHeight) + (floorHeight / 2);
+      floor.position.x = 0;
+      floor.position.z = 0;
+      
       floor.castShadow = true;
       floor.receiveShadow = true;
-      floor.name = 'building';
       
-      sceneRef.current.add(floor);
+      buildingRef.current.add(floor);
     }
-  }, [buildingParams]);
 
-  return (
-    <div 
-      ref={containerRef} 
-      className="w-full h-full bg-gray-100 rounded-md"
-      style={{ minHeight: '400px' }}
-    />
-  );
+    // Position the building in relation to setbacks
+    if (terrainRef.current) {
+      const terrainSize = 100; // Our terrain size
+      
+      // Calculate the center position based on setbacks
+      const centerX = (buildingParams.setbacks.right - buildingParams.setbacks.left) / 2;
+      const centerZ = (buildingParams.setbacks.back - buildingParams.setbacks.front) / 2;
+      
+      buildingRef.current.position.x = centerX;
+      buildingRef.current.position.z = centerZ;
+      
+      // Apply offset to center the building on the terrain
+      const terrainOffsetX = -(terrainSize / 2) + (buildingParams.width / 2) + buildingParams.setbacks.left;
+      const terrainOffsetZ = -(terrainSize / 2) + (buildingParams.length / 2) + buildingParams.setbacks.front;
+      
+      buildingRef.current.position.x += terrainOffsetX;
+      buildingRef.current.position.z += terrainOffsetZ;
+    }
+  }, [
+    buildingParams.width,
+    buildingParams.length, 
+    buildingParams.height, 
+    buildingParams.floors,
+    buildingParams.setbacks
+  ]);
+
+  return <div ref={mountRef} className="w-full h-full" />;
 };
 
 export default ThreeDScene;

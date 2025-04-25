@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import TabNavigation from "@/components/TabNavigation";
 import TerrenoUrbanismoTab from "./TerrenoUrbanismoTab";
@@ -28,11 +28,18 @@ const Index = () => {
   // Estado para dados do terreno
   const [terrainData, setTerrainData] = useState<TerrainData | null>(null);
   
-  // Estado para dimensões do edifício
+  // Estado para dimensões do edifício - CENTRALIZADO AGORA
   const [buildingWidth, setBuildingWidth] = useState(15);
   const [buildingLength, setBuildingLength] = useState(25);
   const [buildingHeight, setBuildingHeight] = useState(30);
   const [floors, setFloors] = useState(10);
+  const [buildingType, setBuildingType] = useState("residencial");
+  const [setbacks, setSetbacks] = useState({
+    front: 5,
+    back: 3,
+    left: 2,
+    right: 2,
+  });
   
   // Estado para análise de resultados
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult>({
@@ -109,6 +116,85 @@ const Index = () => {
     },
   ]);
 
+  // Handler para alteração de setbacks
+  const handleSetbackChange = (key: "front" | "back" | "left" | "right", value: number) => {
+    setSetbacks((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  // useEffect para recalcular analysisResult e fireSafetyItems quando os parâmetros mudarem
+  useEffect(() => {
+    if (terrainData) {
+      // Cálculo de área construída
+      const floorArea = buildingWidth * buildingLength;
+      const totalBuiltArea = floorArea * floors;
+      
+      // Cálculo de CA
+      const calculatedCA = totalBuiltArea / terrainData.area;
+      
+      // Cálculo de TO
+      const taxaOcupacao = (floorArea / terrainData.area) * 100;
+      
+      // Análise de conformidade
+      const newResult: AnalysisResult = {
+        coeficienteAproveitamento: {
+          permitido: urbanParams.coeficienteAproveitamento,
+          projetado: parseFloat(calculatedCA.toFixed(2)),
+          conforme: calculatedCA <= urbanParams.coeficienteAproveitamento,
+        },
+        taxaOcupacao: {
+          permitida: urbanParams.taxaOcupacao,
+          projetada: parseFloat(taxaOcupacao.toFixed(2)),
+          conforme: taxaOcupacao <= urbanParams.taxaOcupacao,
+        },
+        alturaMaxima: {
+          permitida: urbanParams.alturaMaxima,
+          projetada: buildingHeight,
+          conforme: buildingHeight <= urbanParams.alturaMaxima,
+        },
+        recuos: {
+          frontal: {
+            permitido: urbanParams.recuos.frontal,
+            projetado: setbacks.front,
+            conforme: setbacks.front >= urbanParams.recuos.frontal,
+          },
+          lateral: {
+            permitido: urbanParams.recuos.lateral,
+            projetado: Math.min(setbacks.left, setbacks.right),
+            conforme: setbacks.left >= urbanParams.recuos.lateral && setbacks.right >= urbanParams.recuos.lateral,
+          },
+          fundos: {
+            permitido: urbanParams.recuos.fundos,
+            projetado: setbacks.back,
+            conforme: setbacks.back >= urbanParams.recuos.fundos,
+          },
+        },
+      };
+      
+      setAnalysisResult(newResult);
+
+      // Atualizar aplicabilidade de itens de segurança contra incêndio
+      const updatedFireSafetyItems = fireSafetyItems.map(item => {
+        if (item.id === "1") { // Escada enclausurada
+          return { ...item, applicable: floors > 2 };
+        } else if (item.id === "2") { // Duas saídas independentes
+          return { ...item, applicable: floorArea > 750 };
+        } else if (item.id === "5") { // Pressurização de escada
+          return { ...item, applicable: floors > 6 };
+        } else if (item.id === "6") { // Ventilação forçada
+          return { ...item, applicable: floorArea > 1000 };
+        } else if (item.id === "7") { // Sistema de alarme
+          return { ...item, applicable: floorArea > 500 };
+        }
+        return item;
+      });
+      
+      setFireSafetyItems(updatedFireSafetyItems);
+    }
+  }, [urbanParams, terrainData, buildingWidth, buildingLength, buildingHeight, floors, setbacks]);
+
   // Renderiza a aba ativa
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -126,6 +212,18 @@ const Index = () => {
           <VolumetriaTab
             urbanParams={urbanParams}
             terrainData={terrainData}
+            buildingWidth={buildingWidth}
+            buildingLength={buildingLength}
+            buildingHeight={buildingHeight}
+            floors={floors}
+            buildingType={buildingType}
+            setbacks={setbacks}
+            onWidthChange={setBuildingWidth}
+            onLengthChange={setBuildingLength}
+            onHeightChange={setBuildingHeight}
+            onFloorsChange={setFloors}
+            onBuildingTypeChange={setBuildingType}
+            onSetbackChange={handleSetbackChange}
           />
         );
       case "conformidade":
@@ -137,6 +235,13 @@ const Index = () => {
             buildingLength={buildingLength}
             buildingHeight={buildingHeight}
             floors={floors}
+            analysisResult={analysisResult}
+            fireSafetyItems={fireSafetyItems}
+            onFireSafetyItemChange={(id, compliant) => {
+              setFireSafetyItems((prev) =>
+                prev.map((item) => (item.id === id ? { ...item, compliant } : item))
+              );
+            }}
           />
         );
       case "relatorio":

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import ThreeDScene from "@/components/ThreeDScene";
 import BuildingControls from "@/components/BuildingControls";
 import AreaComparisonChart from "@/components/AreaComparisonChart";
@@ -8,28 +8,41 @@ import { TerrainData, UrbanParams } from "@/types";
 interface VolumetriaTabProps {
   urbanParams: UrbanParams;
   terrainData: TerrainData | null;
+  buildingWidth: number;
+  buildingLength: number;
+  buildingHeight: number;
+  floors: number;
+  buildingType: string;
+  setbacks: {
+    front: number;
+    back: number;
+    left: number;
+    right: number;
+  };
+  onWidthChange: (value: number) => void;
+  onLengthChange: (value: number) => void;
+  onHeightChange: (value: number) => void;
+  onFloorsChange: (value: number) => void;
+  onBuildingTypeChange: (value: string) => void;
+  onSetbackChange: (key: "front" | "back" | "left" | "right", value: number) => void;
 }
 
-const VolumetriaTab: React.FC<VolumetriaTabProps> = ({ urbanParams, terrainData }) => {
-  const [buildingWidth, setBuildingWidth] = useState(15);
-  const [buildingLength, setBuildingLength] = useState(25);
-  const [buildingHeight, setBuildingHeight] = useState(30);
-  const [floors, setFloors] = useState(10);
-  const [buildingType, setBuildingType] = useState("residencial");
-  const [setbacks, setSetbacks] = useState({
-    front: 5,
-    back: 3,
-    left: 2,
-    right: 2,
-  });
-
-  const handleSetbackChange = (key: keyof typeof setbacks, value: number) => {
-    setSetbacks((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
-  };
-
+const VolumetriaTab: React.FC<VolumetriaTabProps> = ({ 
+  urbanParams, 
+  terrainData,
+  buildingWidth,
+  buildingLength,
+  buildingHeight,
+  floors,
+  buildingType,
+  setbacks,
+  onWidthChange,
+  onLengthChange,
+  onHeightChange,
+  onFloorsChange,
+  onBuildingTypeChange,
+  onSetbackChange
+}) => {
   // Cálculo das áreas para o gráfico de comparação
   const terrainArea = terrainData?.area || 1000;
   const builtArea = buildingWidth * buildingLength * floors * 0.85; // Estimativa simplificada
@@ -53,12 +66,12 @@ const VolumetriaTab: React.FC<VolumetriaTabProps> = ({ urbanParams, terrainData 
             floors={floors}
             setbacks={setbacks}
             buildingType={buildingType}
-            onWidthChange={setBuildingWidth}
-            onLengthChange={setBuildingLength}
-            onHeightChange={setBuildingHeight}
-            onFloorsChange={setFloors}
-            onBuildingTypeChange={setBuildingType}
-            onSetbackChange={handleSetbackChange}
+            onWidthChange={onWidthChange}
+            onLengthChange={onLengthChange}
+            onHeightChange={onHeightChange}
+            onFloorsChange={onFloorsChange}
+            onBuildingTypeChange={onBuildingTypeChange}
+            onSetbackChange={onSetbackChange}
           />
         </div>
 

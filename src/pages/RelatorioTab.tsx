@@ -2,8 +2,7 @@
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import ReportGenerator from "@/components/ReportGenerator";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { TerrainData, UrbanParams, AnalysisResult, FireSafetyItem } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle, XCircle } from "lucide-react";
@@ -24,13 +23,19 @@ const RelatorioTab: React.FC<RelatorioTabProps> = ({
   const { toast } = useToast();
 
   const handleGenerateReport = () => {
+    // Lógica avançada de geração de PDF será implementada em uma próxima etapa
+    // Por enquanto mantemos o toast
     toast({
       title: "Gerando relatório",
       description: "O relatório PDF está sendo gerado e ficará disponível para download em instantes.",
     });
+    
+    // Em uma implementação real, aqui seria chamada uma função para gerar o PDF
+    // usando jsPDF ou outra biblioteca
   };
 
   const handleExportDWG = () => {
+    // Aqui seria implementada a lógica para exportar arquivos DWG/DXF
     toast({
       title: "Exportando DWG",
       description: "Os arquivos DWG estão sendo gerados e ficarão disponíveis para download em instantes.",
@@ -38,6 +43,8 @@ const RelatorioTab: React.FC<RelatorioTabProps> = ({
   };
 
   const handleExportImages = () => {
+    // Aqui seria implementada a lógica para capturar e salvar imagens 3D
+    // usando renderer.domElement.toDataURL() do Three.js
     toast({
       title: "Exportando imagens",
       description: "As imagens estão sendo geradas e ficarão disponíveis para download em instantes.",
@@ -59,6 +66,10 @@ const RelatorioTab: React.FC<RelatorioTabProps> = ({
             onGenerateReport={handleGenerateReport}
             onExportDWG={handleExportDWG}
             onExportImages={handleExportImages}
+            urbanParams={urbanParams}
+            terrainData={terrainData}
+            analysisResult={analysisResult}
+            fireSafetyItems={fireSafetyItems}
           />
         </div>
 
