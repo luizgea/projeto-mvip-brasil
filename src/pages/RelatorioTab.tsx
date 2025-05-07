@@ -3,7 +3,7 @@ import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import ReportGenerator from "@/components/ReportGenerator";
 import { useToast } from "@/hooks/use-toast";
-import { TerrainData, UrbanParams, AnalysisResult, FireSafetyItem } from "@/types";
+import { TerrainData, UrbanParams, AnalysisResult, FireSafetyItem, BuildingParams } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle, XCircle } from "lucide-react";
 
@@ -12,6 +12,7 @@ interface RelatorioTabProps {
   terrainData: TerrainData | null;
   analysisResult: AnalysisResult;
   fireSafetyItems: FireSafetyItem[];
+  buildingParams: BuildingParams; // Added this missing prop
 }
 
 const RelatorioTab: React.FC<RelatorioTabProps> = ({
@@ -19,6 +20,7 @@ const RelatorioTab: React.FC<RelatorioTabProps> = ({
   terrainData,
   analysisResult,
   fireSafetyItems,
+  buildingParams, // Added the prop to the component parameters
 }) => {
   const { toast } = useToast();
 

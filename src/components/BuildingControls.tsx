@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -22,7 +21,7 @@ interface BuildingControlsProps {
   onLengthChange: (value: number) => void;
   onHeightChange: (value: number) => void;
   onFloorsChange: (value: number) => void;
-  onBuildingTypeChange: (value: string) => void;
+  onBuildingTypeChange: (value: "residencial" | "comercial" | "misto") => void;
   onSetbackChange: (key: "front" | "back" | "left" | "right", value: number) => void;
 }
 
@@ -47,7 +46,15 @@ const BuildingControls: React.FC<BuildingControlsProps> = ({
           <CardTitle>Tipologia</CardTitle>
         </CardHeader>
         <CardContent>
-          <Select value={buildingType} onValueChange={onBuildingTypeChange}>
+          <Select 
+            value={buildingType} 
+            onValueChange={(value) => {
+              // Ensure we only pass valid values
+              if (value === "residencial" || value === "comercial" || value === "misto") {
+                onBuildingTypeChange(value);
+              }
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Selecione o tipo de edificação" />
             </SelectTrigger>

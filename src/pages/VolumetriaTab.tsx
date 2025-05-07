@@ -49,7 +49,7 @@ const VolumetriaTab: React.FC<VolumetriaTabProps> = ({
             onLengthChange={(value) => onBuildingParamChange('length', value)}
             onHeightChange={(value) => onBuildingParamChange('height', value)}
             onFloorsChange={(value) => onBuildingParamChange('floors', value)}
-            onBuildingTypeChange={(value) => onBuildingParamChange('type', value)}
+            onBuildingTypeChange={(value: "residencial" | "comercial" | "misto") => onBuildingParamChange('type', value)}
             onSetbackChange={onSetbackChange}
           />
         </div>
