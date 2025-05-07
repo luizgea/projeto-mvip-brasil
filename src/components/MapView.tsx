@@ -52,16 +52,30 @@ const MapView: React.FC<MapViewProps> = ({ coordinates = [-19.9167, -43.9345], t
 
     // Use terrainData coordinates if available, otherwise use provided coordinates
     const displayCoords = terrainData?.coordinates || coordinates;
-
-    // Add a marker for the location
-    markerRef.current = L.marker(displayCoords)
-      .addTo(leafletMapRef.current)
-      .bindPopup("Localização selecionada")
-      .openPopup();
-
-    // Center the map on the coordinates
-    leafletMapRef.current.setView(displayCoords, 15);
-  }, [coordinates, terrainData?.coordinates]);
+    
+    // If we have specific latitude/longitude from the uploaded GeoJSON, use those
+    if (terrainData?.latitude && terrainData?.longitude) {
+      const latLng: [number, number] = [terrainData.latitude, terrainData.longitude];
+      
+      // Add a marker for the location
+      markerRef.current = L.marker(latLng)
+        .addTo(leafletMapRef.current)
+        .bindPopup("Localização selecionada")
+        .openPopup();
+      
+      // Center the map on the coordinates
+      leafletMapRef.current.setView(latLng, 15);
+    } else {
+      // Add a marker for the location
+      markerRef.current = L.marker(displayCoords)
+        .addTo(leafletMapRef.current)
+        .bindPopup("Localização selecionada")
+        .openPopup();
+      
+      // Center the map on the coordinates
+      leafletMapRef.current.setView(displayCoords, 15);
+    }
+  }, [coordinates, terrainData?.coordinates, terrainData?.latitude, terrainData?.longitude]);
 
   // Update GeoJSON layer when terrainData changes
   useEffect(() => {
@@ -94,7 +108,29 @@ const MapView: React.FC<MapViewProps> = ({ coordinates = [-19.9167, -43.9345], t
         console.error("Erro ao renderizar geometria do terreno:", error);
       }
     }
-  }, [terrainData?.geometry]);
+    
+    // If we have a specific polygon from GeoJSON upload, use that
+    if (terrainData?.polygon) {
+      try {
+        geoJSONLayerRef.current = L.geoJSON(terrainData.polygon, {
+          style: {
+            color: "#4338ca",
+            weight: 2,
+            opacity: 0.8,
+            fillColor: "#818cf8",
+            fillOpacity: 0.4
+          }
+        }).addTo(leafletMapRef.current);
+        
+        // Fit map bounds to the GeoJSON layer
+        if (geoJSONLayerRef.current.getBounds().isValid()) {
+          leafletMapRef.current.fitBounds(geoJSONLayerRef.current.getBounds());
+        }
+      } catch (error) {
+        console.error("Erro ao renderizar polígono do lote:", error);
+      }
+    }
+  }, [terrainData?.geometry, terrainData?.polygon]);
 
   return (
     <Card className="h-full">

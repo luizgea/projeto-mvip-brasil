@@ -25,22 +25,23 @@ export interface TerrainData {
   };
   coordinates?: [number, number]; // [latitude, longitude]
   geometry?: any; // GeoJSON geometry for the terrain
+  polygon?: GeoJSON.Polygon; // GeoJSON polygon for calculations
+  latitude?: number;
+  longitude?: number;
 }
 
 // Tipos para parâmetros da edificação
 export interface BuildingParams {
-  tipologia: 'residencial' | 'comercial' | 'misto';
-  pavimentos: number;
-  area: number;
-  altura: number;
-  dimensoes: {
-    comprimento: number;
-    largura: number;
-  };
-  recuos: {
-    frontal: number;
-    lateral: number;
-    fundos: number;
+  width: number;
+  length: number;
+  height: number;
+  floors: number;
+  type: 'residencial' | 'comercial' | 'misto';
+  setbacks: {
+    front: number;
+    back: number;
+    left: number;
+    right: number;
   };
 }
 
@@ -86,6 +87,10 @@ export interface AnalysisResult {
       conforme: boolean;
     };
   };
+  terrenoArea?: number;
+  builtArea?: number;
+  maxAllowed?: number;
+  buildableShape?: any;
 }
 
 // Tipos para checklist de segurança contra incêndio

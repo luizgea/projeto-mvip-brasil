@@ -1,8 +1,9 @@
 
-import React, { useState } from "react";
+import React from "react";
 import AddressSearchInput from "@/components/AddressSearchInput";
 import MapView from "@/components/MapView";
 import ParametersForm from "@/components/ParametersForm";
+import GeoJSONUploader from "@/components/GeoJSONUploader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TerrainData, UrbanParams } from "@/types";
 
@@ -32,6 +33,8 @@ const TerrenoUrbanismoTab: React.FC<TerrenoUrbanismoTabProps> = ({
         maxima: 860,
       },
       coordinates: coordinates,
+      latitude: coordinates[0],
+      longitude: coordinates[1],
       // Mock GeoJSON for visualization
       geometry: {
         type: "Polygon",
@@ -48,6 +51,20 @@ const TerrenoUrbanismoTab: React.FC<TerrenoUrbanismoTabProps> = ({
     };
     
     onTerrainDataChange(mockTerrainData);
+  };
+  
+  const handleGeoJSONLoaded = (geoJSONData: Partial<TerrainData>) => {
+    if (!terrainData) return;
+    
+    // Mesclar os dados do GeoJSON com os dados existentes do terreno
+    const updatedTerrainData: TerrainData = {
+      ...terrainData,
+      ...geoJSONData,
+      // Se temos uma área calculada do GeoJSON, usá-la
+      area: geoJSONData.area || terrainData.area
+    };
+    
+    onTerrainDataChange(updatedTerrainData);
   };
 
   return (
@@ -71,6 +88,7 @@ const TerrenoUrbanismoTab: React.FC<TerrenoUrbanismoTabProps> = ({
               </CardHeader>
               <CardContent>
                 <AddressSearchInput onAddressFound={handleAddressFound} />
+                <GeoJSONUploader onGeoJSONLoaded={handleGeoJSONLoaded} />
                 
                 {terrainData && (
                   <div className="mt-6 space-y-3">
@@ -100,6 +118,13 @@ const TerrenoUrbanismoTab: React.FC<TerrenoUrbanismoTabProps> = ({
                         Mínima: {terrainData.cotas.minima}m, Máxima: {terrainData.cotas.maxima}m
                       </p>
                     </div>
+                    {terrainData.polygon && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-green-600">
+                          Polígono do lote importado com sucesso!
+                        </h4>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

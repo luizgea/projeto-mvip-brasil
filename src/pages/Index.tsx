@@ -6,12 +6,14 @@ import TerrenoUrbanismoTab from "./TerrenoUrbanismoTab";
 import VolumetriaTab from "./VolumetriaTab";
 import ConformidadeTab from "./ConformidadeTab";
 import RelatorioTab from "./RelatorioTab";
-import { TerrainData, UrbanParams, AnalysisResult, FireSafetyItem } from "@/types";
+import { TerrainData, UrbanParams, AnalysisResult, FireSafetyItem, BuildingParams } from "@/types";
+import { calculateArea, computeBuildableShape, generateFireSafetyItems } from "@/utils/terrainUtils";
+import * as turf from "@turf/turf";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("terreno");
   
-  // Estado para parâmetros urbanísticos
+  // Estado centralizado para parâmetros urbanísticos
   const [urbanParams, setUrbanParams] = useState<UrbanParams>({
     coeficienteAproveitamento: 2.5,
     taxaOcupacao: 70,
@@ -25,20 +27,22 @@ const Index = () => {
     odc: 0.5,
   });
   
-  // Estado para dados do terreno
+  // Estado centralizado para dados do terreno
   const [terrainData, setTerrainData] = useState<TerrainData | null>(null);
   
-  // Estado para dimensões do edifício - CENTRALIZADO
-  const [buildingWidth, setBuildingWidth] = useState(15);
-  const [buildingLength, setBuildingLength] = useState(25);
-  const [buildingHeight, setBuildingHeight] = useState(30);
-  const [floors, setFloors] = useState(10);
-  const [buildingType, setBuildingType] = useState("residencial");
-  const [setbacks, setSetbacks] = useState({
-    front: 5,
-    back: 3,
-    left: 2,
-    right: 2,
+  // Estado centralizado para parâmetros da edificação
+  const [buildingParams, setBuildingParams] = useState<BuildingParams>({
+    width: 15,
+    length: 25,
+    height: 30,
+    floors: 10,
+    type: 'residencial',
+    setbacks: {
+      front: 5,
+      back: 3,
+      left: 2,
+      right: 2,
+    }
   });
   
   // Estado para análise de resultados
@@ -75,156 +79,110 @@ const Index = () => {
         conforme: true,
       },
     },
+    buildableShape: null
   });
   
   // Estado para checklist de segurança contra incêndio
   const [fireSafetyItems, setFireSafetyItems] = useState<FireSafetyItem[]>([]);
 
-  // Handler para alteração de setbacks
-  const handleSetbackChange = (key: "front" | "back" | "left" | "right", value: number) => {
-    setSetbacks((prev) => ({
+  // Handler para alteração de building parameters
+  const handleBuildingParamChange = <K extends keyof BuildingParams>(key: K, value: BuildingParams[K]) => {
+    setBuildingParams((prev) => ({
       ...prev,
       [key]: value,
     }));
   };
 
+  // Handler para alteração de setbacks
+  const handleSetbackChange = (key: "front" | "back" | "left" | "right", value: number) => {
+    setBuildingParams((prev) => ({
+      ...prev,
+      setbacks: {
+        ...prev.setbacks,
+        [key]: value,
+      },
+    }));
+  };
+
   // useEffect para recalcular analysisResult quando os parâmetros mudarem
   useEffect(() => {
-    if (terrainData) {
-      // Cálculo de área construída
-      const floorArea = buildingWidth * buildingLength;
-      const totalBuiltArea = floorArea * floors;
-      
-      // Cálculo de CA
-      const calculatedCA = totalBuiltArea / terrainData.area;
-      
-      // Cálculo de TO
-      const taxaOcupacao = (floorArea / terrainData.area) * 100;
-      
-      // Análise de conformidade
-      const newResult: AnalysisResult = {
-        coeficienteAproveitamento: {
-          permitido: urbanParams.coeficienteAproveitamento,
-          projetado: parseFloat(calculatedCA.toFixed(2)),
-          conforme: calculatedCA <= urbanParams.coeficienteAproveitamento,
-        },
-        taxaOcupacao: {
-          permitida: urbanParams.taxaOcupacao,
-          projetada: parseFloat(taxaOcupacao.toFixed(2)),
-          conforme: taxaOcupacao <= urbanParams.taxaOcupacao,
-        },
-        alturaMaxima: {
-          permitida: urbanParams.alturaMaxima,
-          projetada: buildingHeight,
-          conforme: buildingHeight <= urbanParams.alturaMaxima,
-        },
-        recuos: {
-          frontal: {
-            permitido: urbanParams.recuos.frontal,
-            projetado: setbacks.front,
-            conforme: setbacks.front >= urbanParams.recuos.frontal,
-          },
-          lateral: {
-            permitido: urbanParams.recuos.lateral,
-            projetado: Math.min(setbacks.left, setbacks.right),
-            conforme: setbacks.left >= urbanParams.recuos.lateral && setbacks.right >= urbanParams.recuos.lateral,
-          },
-          fundos: {
-            permitido: urbanParams.recuos.fundos,
-            projetado: setbacks.back,
-            conforme: setbacks.back >= urbanParams.recuos.fundos,
-          },
-        },
-      };
-      
-      setAnalysisResult(newResult);
-    }
-  }, [urbanParams, terrainData, buildingWidth, buildingLength, buildingHeight, floors, setbacks]);
+    if (!terrainData) return;
 
-  // useEffect para gerar checklist de segurança contra incêndio
-  useEffect(() => {
-    if (terrainData) {
-      const floorArea = buildingWidth * buildingLength;
-      const totalBuiltArea = floorArea * floors;
-      const buildingHeightInMeters = buildingHeight;
-      
-      // Lista completa de itens de segurança contra incêndio
-      const newFireSafetyItems: FireSafetyItem[] = [
-        {
-          id: "1",
-          description: "Escada enclausurada",
-          applicable: floors > 2 || buildingHeightInMeters > 12,
-          compliant: null,
-          details: "Exigido para edificações com mais de 2 pavimentos ou altura superior a 12m",
-        },
-        {
-          id: "2",
-          description: "Duas saídas independentes",
-          applicable: floorArea > 750 || floors > 3,
-          compliant: null,
-          details: "Exigido para área construída superior a 750m² ou mais de 3 pavimentos",
-        },
-        {
-          id: "3",
-          description: "Hidrantes e extintores",
-          applicable: totalBuiltArea > 750,
-          compliant: null,
-          details: "Requisitos conforme IT-08 do CBMMG",
-        },
-        {
-          id: "4",
-          description: "Rota acessível e iluminada",
-          applicable: true,
-          compliant: null,
-          details: "Obrigatório para todas as edificações",
-        },
-        {
-          id: "5",
-          description: "Pressurização de escada",
-          applicable: floors > 6 || buildingHeightInMeters > 18,
-          compliant: null,
-          details: "Exigido para edificações com mais de 6 pavimentos ou altura superior a 18m",
-        },
-        {
-          id: "6",
-          description: "Ventilação forçada",
-          applicable: floorArea > 1000,
-          compliant: null,
-          details: "Exigido para edificações com área superior a 1000m²",
-        },
-        {
-          id: "7",
-          description: "Sistema de alarme",
-          applicable: floorArea > 500 || floors > 2,
-          compliant: null,
-          details: "Exigido para edificações com área superior a 500m² ou mais de 2 pavimentos",
-        },
-        {
-          id: "8",
-          description: "Sinalização de emergência",
-          applicable: true,
-          compliant: null,
-          details: "Obrigatório conforme NBR 13434",
-        },
-        {
-          id: "9",
-          description: "Iluminação de emergência",
-          applicable: true,
-          compliant: null,
-          details: "Obrigatório conforme NBR 10898, autonomia mínima de 1h",
-        },
-        {
-          id: "10",
-          description: "Resistência ao fogo das estruturas",
-          applicable: true,
-          compliant: null,
-          details: "Conforme NBR 15575, varia de acordo com o uso do edifício",
-        }
-      ];
-      
-      setFireSafetyItems(newFireSafetyItems);
+    // Calcular área do terreno usando Turf.js
+    let terrenoArea = terrainData.area; // Valor padrão 
+    let buildableShape = null;
+    
+    if (terrainData.polygon) {
+      try {
+        terrenoArea = calculateArea(terrainData.polygon);
+        buildableShape = computeBuildableShape(terrainData.polygon, urbanParams.recuos);
+      } catch (error) {
+        console.error("Erro ao calcular área com Turf.js:", error);
+      }
     }
-  }, [terrainData, buildingWidth, buildingLength, buildingHeight, floors]);
+    
+    // Cálculo de área construída
+    const floorArea = buildingParams.width * buildingParams.length;
+    const totalBuiltArea = floorArea * buildingParams.floors;
+    
+    // Cálculo de CA
+    const calculatedCA = totalBuiltArea / terrenoArea;
+    
+    // Cálculo de TO
+    const taxaOcupacao = (floorArea / terrenoArea) * 100;
+    
+    // Análise de conformidade
+    const newResult: AnalysisResult = {
+      coeficienteAproveitamento: {
+        permitido: urbanParams.coeficienteAproveitamento,
+        projetado: parseFloat(calculatedCA.toFixed(2)),
+        conforme: calculatedCA <= urbanParams.coeficienteAproveitamento,
+      },
+      taxaOcupacao: {
+        permitida: urbanParams.taxaOcupacao,
+        projetada: parseFloat(taxaOcupacao.toFixed(2)),
+        conforme: taxaOcupacao <= urbanParams.taxaOcupacao,
+      },
+      alturaMaxima: {
+        permitida: urbanParams.alturaMaxima,
+        projetada: buildingParams.height,
+        conforme: buildingParams.height <= urbanParams.alturaMaxima,
+      },
+      recuos: {
+        frontal: {
+          permitido: urbanParams.recuos.frontal,
+          projetado: buildingParams.setbacks.front,
+          conforme: buildingParams.setbacks.front >= urbanParams.recuos.frontal,
+        },
+        lateral: {
+          permitido: urbanParams.recuos.lateral,
+          projetado: Math.min(buildingParams.setbacks.left, buildingParams.setbacks.right),
+          conforme: buildingParams.setbacks.left >= urbanParams.recuos.lateral && buildingParams.setbacks.right >= urbanParams.recuos.lateral,
+        },
+        fundos: {
+          permitido: urbanParams.recuos.fundos,
+          projetado: buildingParams.setbacks.back,
+          conforme: buildingParams.setbacks.back >= urbanParams.recuos.fundos,
+        },
+      },
+      terrenoArea: terrenoArea,
+      builtArea: totalBuiltArea,
+      maxAllowed: terrenoArea * urbanParams.coeficienteAproveitamento,
+      buildableShape: buildableShape
+    };
+    
+    setAnalysisResult(newResult);
+    
+    // Gerar items de segurança contra incêndio baseado nos parâmetros calculados
+    const newFireSafetyItems = generateFireSafetyItems(
+      buildingParams.height, 
+      totalBuiltArea, 
+      buildingParams.floors
+    );
+    
+    setFireSafetyItems(newFireSafetyItems);
+    
+  }, [urbanParams, terrainData, buildingParams]);
 
   // Renderiza a aba ativa
   const renderActiveTab = () => {
@@ -243,17 +201,9 @@ const Index = () => {
           <VolumetriaTab
             urbanParams={urbanParams}
             terrainData={terrainData}
-            buildingWidth={buildingWidth}
-            buildingLength={buildingLength}
-            buildingHeight={buildingHeight}
-            floors={floors}
-            buildingType={buildingType}
-            setbacks={setbacks}
-            onWidthChange={setBuildingWidth}
-            onLengthChange={setBuildingLength}
-            onHeightChange={setBuildingHeight}
-            onFloorsChange={setFloors}
-            onBuildingTypeChange={setBuildingType}
+            buildingParams={buildingParams}
+            analysisResult={analysisResult}
+            onBuildingParamChange={handleBuildingParamChange}
             onSetbackChange={handleSetbackChange}
           />
         );
@@ -262,10 +212,10 @@ const Index = () => {
           <ConformidadeTab
             urbanParams={urbanParams}
             terrainData={terrainData}
-            buildingWidth={buildingWidth}
-            buildingLength={buildingLength}
-            buildingHeight={buildingHeight}
-            floors={floors}
+            buildingWidth={buildingParams.width}
+            buildingLength={buildingParams.length}
+            buildingHeight={buildingParams.height}
+            floors={buildingParams.floors}
             analysisResult={analysisResult}
             fireSafetyItems={fireSafetyItems}
             onFireSafetyItemChange={(id, compliant) => {
@@ -282,6 +232,7 @@ const Index = () => {
             terrainData={terrainData}
             analysisResult={analysisResult}
             fireSafetyItems={fireSafetyItems}
+            buildingParams={buildingParams}
           />
         );
       default:

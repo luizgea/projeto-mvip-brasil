@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -17,9 +18,15 @@ interface BuildingParams {
 
 interface ThreeDSceneProps {
   buildingParams: BuildingParams;
+  buildablePolygon?: any;
+  alturaMaxima?: number;
 }
 
-const ThreeDScene: React.FC<ThreeDSceneProps> = ({ buildingParams }) => {
+const ThreeDScene: React.FC<ThreeDSceneProps> = ({ 
+  buildingParams, 
+  buildablePolygon,
+  alturaMaxima
+}) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -27,6 +34,7 @@ const ThreeDScene: React.FC<ThreeDSceneProps> = ({ buildingParams }) => {
   const controlsRef = useRef<OrbitControls | null>(null);
   const buildingRef = useRef<THREE.Group | null>(null);
   const terrainRef = useRef<THREE.Mesh | null>(null);
+  const buildableShapeRef = useRef<THREE.Mesh | null>(null);
   const animationFrameId = useRef<number | null>(null);
 
   useEffect(() => {
@@ -148,6 +156,7 @@ const ThreeDScene: React.FC<ThreeDSceneProps> = ({ buildingParams }) => {
     };
   }, []);
 
+  // Effect for rendering the standard building
   useEffect(() => {
     if (!buildingRef.current) return;
 
@@ -204,6 +213,67 @@ const ThreeDScene: React.FC<ThreeDSceneProps> = ({ buildingParams }) => {
     buildingParams.floors,
     buildingParams.setbacks
   ]);
+  
+  // Effect for rendering the buildable polygon if available
+  useEffect(() => {
+    if (!sceneRef.current || !buildablePolygon) return;
+    
+    // Remove existing buildable shape if exists
+    if (buildableShapeRef.current && sceneRef.current) {
+      sceneRef.current.remove(buildableShapeRef.current);
+      buildableShapeRef.current = null;
+    }
+    
+    try {
+      // This is a simplified implementation - in a real app you would 
+      // need to convert GeoJSON polygon to THREE.Shape properly
+      if (buildablePolygon && buildablePolygon.geometry && buildablePolygon.geometry.coordinates) {
+        const coordinates = buildablePolygon.geometry.coordinates[0];
+        
+        // Create a Three.js shape from the coordinates
+        const shape = new THREE.Shape();
+        
+        // Start at the first point
+        if (coordinates && coordinates.length > 0) {
+          shape.moveTo(coordinates[0][0], coordinates[0][1]);
+          
+          // Add all other points
+          for (let i = 1; i < coordinates.length; i++) {
+            shape.lineTo(coordinates[i][0], coordinates[i][1]);
+          }
+          
+          // Close the shape
+          shape.closePath();
+          
+          // Create extruded geometry
+          const height = alturaMaxima || 10;
+          const extrudeSettings = {
+            steps: 1,
+            depth: height,
+            bevelEnabled: false
+          };
+          
+          const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+          const material = new THREE.MeshStandardMaterial({ 
+            color: 0x3366cc,
+            transparent: true,
+            opacity: 0.5
+          });
+          
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.rotation.x = -Math.PI / 2;
+          mesh.position.y = 0;
+          
+          if (sceneRef.current) {
+            sceneRef.current.add(mesh);
+            buildableShapeRef.current = mesh;
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error rendering buildable polygon:", error);
+    }
+  }, [buildablePolygon, alturaMaxima]);
 
   return <div ref={mountRef} className="w-full h-full" />;
 };

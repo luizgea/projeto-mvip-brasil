@@ -44,6 +44,23 @@ const ConformidadeTab: React.FC<ConformidadeTabProps> = ({
           </CardHeader>
           <CardContent>
             <ComplianceTable result={analysisResult} />
+            
+            {analysisResult.terrenoArea && analysisResult.builtArea && (
+              <div className="mt-4 bg-gray-50 p-4 rounded-md">
+                <h3 className="text-sm font-medium mb-2">Informações adicionais:</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="font-semibold">Área do terreno:</span> {analysisResult.terrenoArea.toFixed(2)} m²
+                  </div>
+                  <div>
+                    <span className="font-semibold">Área construída:</span> {analysisResult.builtArea.toFixed(2)} m²
+                  </div>
+                  <div>
+                    <span className="font-semibold">Área máxima permitida:</span> {analysisResult.maxAllowed?.toFixed(2)} m²
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

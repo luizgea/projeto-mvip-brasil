@@ -3,50 +3,29 @@ import React from "react";
 import ThreeDScene from "@/components/ThreeDScene";
 import BuildingControls from "@/components/BuildingControls";
 import AreaComparisonChart from "@/components/AreaComparisonChart";
-import { TerrainData, UrbanParams } from "@/types";
+import { AnalysisResult, BuildingParams, TerrainData, UrbanParams } from "@/types";
 
 interface VolumetriaTabProps {
   urbanParams: UrbanParams;
   terrainData: TerrainData | null;
-  buildingWidth: number;
-  buildingLength: number;
-  buildingHeight: number;
-  floors: number;
-  buildingType: string;
-  setbacks: {
-    front: number;
-    back: number;
-    left: number;
-    right: number;
-  };
-  onWidthChange: (value: number) => void;
-  onLengthChange: (value: number) => void;
-  onHeightChange: (value: number) => void;
-  onFloorsChange: (value: number) => void;
-  onBuildingTypeChange: (value: string) => void;
+  buildingParams: BuildingParams;
+  analysisResult: AnalysisResult;
+  onBuildingParamChange: <K extends keyof BuildingParams>(key: K, value: BuildingParams[K]) => void;
   onSetbackChange: (key: "front" | "back" | "left" | "right", value: number) => void;
 }
 
-const VolumetriaTab: React.FC<VolumetriaTabProps> = ({ 
-  urbanParams, 
+const VolumetriaTab: React.FC<VolumetriaTabProps> = ({
+  urbanParams,
   terrainData,
-  buildingWidth,
-  buildingLength,
-  buildingHeight,
-  floors,
-  buildingType,
-  setbacks,
-  onWidthChange,
-  onLengthChange,
-  onHeightChange,
-  onFloorsChange,
-  onBuildingTypeChange,
+  buildingParams,
+  analysisResult,
+  onBuildingParamChange,
   onSetbackChange
 }) => {
-  // Cálculo das áreas para o gráfico de comparação
-  const terrainArea = terrainData?.area || 1000;
-  const builtArea = buildingWidth * buildingLength * floors * 0.85; // Estimativa simplificada
-  const maxAllowedArea = terrainArea * urbanParams.coeficienteAproveitamento;
+  // Calculando áreas para o gráfico de comparação usando análise real
+  const terrainArea = analysisResult.terrenoArea || terrainData?.area || 1000;
+  const builtArea = analysisResult.builtArea || (buildingParams.width * buildingParams.length * buildingParams.floors * 0.85);
+  const maxAllowedArea = analysisResult.maxAllowed || (terrainArea * urbanParams.coeficienteAproveitamento);
 
   return (
     <div className="container mx-auto py-6 animate-fade-in">
@@ -60,17 +39,17 @@ const VolumetriaTab: React.FC<VolumetriaTabProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
           <BuildingControls
-            buildingWidth={buildingWidth}
-            buildingLength={buildingLength}
-            buildingHeight={buildingHeight}
-            floors={floors}
-            setbacks={setbacks}
-            buildingType={buildingType}
-            onWidthChange={onWidthChange}
-            onLengthChange={onLengthChange}
-            onHeightChange={onHeightChange}
-            onFloorsChange={onFloorsChange}
-            onBuildingTypeChange={onBuildingTypeChange}
+            buildingWidth={buildingParams.width}
+            buildingLength={buildingParams.length}
+            buildingHeight={buildingParams.height}
+            floors={buildingParams.floors}
+            setbacks={buildingParams.setbacks}
+            buildingType={buildingParams.type}
+            onWidthChange={(value) => onBuildingParamChange('width', value)}
+            onLengthChange={(value) => onBuildingParamChange('length', value)}
+            onHeightChange={(value) => onBuildingParamChange('height', value)}
+            onFloorsChange={(value) => onBuildingParamChange('floors', value)}
+            onBuildingTypeChange={(value) => onBuildingParamChange('type', value)}
             onSetbackChange={onSetbackChange}
           />
         </div>
@@ -79,12 +58,14 @@ const VolumetriaTab: React.FC<VolumetriaTabProps> = ({
           <div className="bg-white rounded-lg shadow-md overflow-hidden h-[500px]">
             <ThreeDScene
               buildingParams={{
-                width: buildingWidth,
-                length: buildingLength,
-                height: buildingHeight,
-                floors: floors,
-                setbacks,
+                width: buildingParams.width,
+                length: buildingParams.length,
+                height: buildingParams.height,
+                floors: buildingParams.floors,
+                setbacks: buildingParams.setbacks,
               }}
+              buildablePolygon={analysisResult.buildableShape}
+              alturaMaxima={urbanParams.alturaMaxima}
             />
           </div>
 
