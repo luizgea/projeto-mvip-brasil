@@ -3,15 +3,15 @@ import React from "react";
 import AddressSearchInput from "@/components/AddressSearchInput";
 import MapView from "@/components/MapView";
 import ParametersForm from "@/components/ParametersForm";
-import GeoJSONUploader from "@/components/GeoJSONUploader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TerrainData, UrbanParams } from "@/types";
+import { Badge } from "@/components/ui/badge";
 
 interface TerrenoUrbanismoTabProps {
   urbanParams: UrbanParams;
   terrainData: TerrainData | null;
   onUrbanParamsChange: (params: UrbanParams) => void;
-  onTerrainDataChange: (data: TerrainData) => void;
+  onTerrainDataChange: (data: Partial<TerrainData>) => void;
 }
 
 const TerrenoUrbanismoTab: React.FC<TerrenoUrbanismoTabProps> = ({
@@ -20,51 +20,31 @@ const TerrenoUrbanismoTab: React.FC<TerrenoUrbanismoTabProps> = ({
   onUrbanParamsChange,
   onTerrainDataChange,
 }) => {
-  const handleAddressFound = (address: string, coordinates: [number, number]) => {
-    // Em uma implementação real, os dados seriam buscados de uma API externa
-    // Aqui estamos apenas simulando o retorno de dados
-    const mockTerrainData: TerrainData = {
-      address: address,
-      area: 1200,
-      zoneamento: "ZAP - Zona de Adensamento Preferencial",
-      limitacoes: ["ADE - Área de Diretrizes Especiais", "Patrimônio Histórico"],
-      cotas: {
-        minima: 850,
-        maxima: 860,
-      },
-      coordinates: coordinates,
-      latitude: coordinates[0],
-      longitude: coordinates[1],
-      // Mock GeoJSON for visualization
-      geometry: {
-        type: "Polygon",
-        coordinates: [
-          [
-            [coordinates[1] - 0.001, coordinates[0] - 0.001],
-            [coordinates[1] + 0.001, coordinates[0] - 0.001],
-            [coordinates[1] + 0.001, coordinates[0] + 0.001],
-            [coordinates[1] - 0.001, coordinates[0] + 0.001],
-            [coordinates[1] - 0.001, coordinates[0] - 0.001]
-          ]
-        ]
-      }
-    };
+  const handleAddressFound = (data: Partial<TerrainData>) => {
+    // Em uma implementação real com dados completos do WFS,
+    // podemos usar diretamente os dados retornados
+    if (!data) return;
     
-    onTerrainDataChange(mockTerrainData);
-  };
-  
-  const handleGeoJSONLoaded = (geoJSONData: Partial<TerrainData>) => {
-    if (!terrainData) return;
-    
-    // Mesclar os dados do GeoJSON com os dados existentes do terreno
-    const updatedTerrainData: TerrainData = {
-      ...terrainData,
-      ...geoJSONData,
-      // Se temos uma área calculada do GeoJSON, usá-la
-      area: geoJSONData.area || terrainData.area
-    };
-    
-    onTerrainDataChange(updatedTerrainData);
+    // Se já temos terrainData, mesclamos com os novos dados
+    if (terrainData) {
+      onTerrainDataChange({
+        ...terrainData,
+        ...data,
+        // Garantir que outros campos existentes sejam preservados
+        limitacoes: terrainData.limitacoes || ["Verificando..."],
+        cotas: terrainData.cotas || { minima: 0, maxima: 0 }
+      });
+    } else {
+      // Se não temos terrainData, criamos um objeto inicial
+      onTerrainDataChange({
+        address: data.address || "",
+        area: data.area || 1000,
+        zoneamento: data.zoneamento || "Zoneamento não disponível",
+        limitacoes: ["Verificando limitações..."],
+        cotas: { minima: 0, maxima: 0 },
+        ...data
+      });
+    }
   };
 
   return (
@@ -88,7 +68,6 @@ const TerrenoUrbanismoTab: React.FC<TerrenoUrbanismoTabProps> = ({
               </CardHeader>
               <CardContent>
                 <AddressSearchInput onAddressFound={handleAddressFound} />
-                <GeoJSONUploader onGeoJSONLoaded={handleGeoJSONLoaded} />
                 
                 {terrainData && (
                   <div className="mt-6 space-y-3">
@@ -103,6 +82,11 @@ const TerrenoUrbanismoTab: React.FC<TerrenoUrbanismoTabProps> = ({
                     <div>
                       <h4 className="text-sm font-semibold">Zoneamento:</h4>
                       <p className="text-sm">{terrainData.zoneamento}</p>
+                      {terrainData.zone && (
+                        <Badge variant="outline" className="mt-1">
+                          {terrainData.zone.sigla}
+                        </Badge>
+                      )}
                     </div>
                     <div>
                       <h4 className="text-sm font-semibold">Limitações:</h4>
@@ -121,7 +105,7 @@ const TerrenoUrbanismoTab: React.FC<TerrenoUrbanismoTabProps> = ({
                     {terrainData.polygon && (
                       <div>
                         <h4 className="text-sm font-semibold text-green-600">
-                          Polígono do lote importado com sucesso!
+                          Polígono do lote carregado com sucesso!
                         </h4>
                       </div>
                     )}
@@ -132,10 +116,7 @@ const TerrenoUrbanismoTab: React.FC<TerrenoUrbanismoTabProps> = ({
           </div>
 
           <div className="lg:col-span-2">
-            <MapView 
-              coordinates={terrainData?.coordinates || [-19.9167, -43.9345]}
-              terrainData={terrainData}
-            />
+            <MapView terrainData={terrainData} />
           </div>
         </div>
 

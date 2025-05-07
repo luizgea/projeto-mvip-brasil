@@ -4,15 +4,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useWfsFetch } from "@/hooks/useWfsFetch";
+import { TerrainData } from "@/types";
 
 interface AddressSearchInputProps {
-  onAddressFound: (address: string, coordinates: [number, number]) => void;
+  onAddressFound: (data: Partial<TerrainData>) => void;
 }
 
 const AddressSearchInput: React.FC<AddressSearchInputProps> = ({ onAddressFound }) => {
   const [address, setAddress] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const { toast } = useToast();
+  const { fetchLotData, isLoading } = useWfsFetch();
 
   const handleSearch = async () => {
     if (!address.trim()) {
@@ -36,15 +39,24 @@ const AddressSearchInput: React.FC<AddressSearchInputProps> = ({ onAddressFound 
       
       if (data && data.length > 0) {
         const result = data[0];
-        const coordinates: [number, number] = [parseFloat(result.lat), parseFloat(result.lon)];
+        const lat = parseFloat(result.lat);
+        const lon = parseFloat(result.lon);
         
-        toast({
-          title: "Endereço encontrado",
-          description: "Parâmetros urbanísticos carregados com sucesso.",
-        });
+        // Usar o hook para buscar dados do lote via WFS
+        const terrainData = await fetchLotData(lat, lon);
         
-        // Chama o callback com o endereço e as coordenadas
-        onAddressFound(address, coordinates);
+        if (terrainData) {
+          // Adicionar o endereço pesquisado
+          terrainData.address = address;
+          
+          // Chama o callback com os dados do terreno
+          onAddressFound(terrainData);
+          
+          toast({
+            title: "Endereço encontrado",
+            description: "Dados do terreno carregados com sucesso.",
+          });
+        }
       } else {
         toast({
           title: "Endereço não encontrado",
@@ -78,8 +90,8 @@ const AddressSearchInput: React.FC<AddressSearchInputProps> = ({ onAddressFound 
           }
         }}
       />
-      <Button onClick={handleSearch} disabled={isSearching}>
-        {isSearching ? "Buscando..." : <Search className="h-4 w-4" />}
+      <Button onClick={handleSearch} disabled={isSearching || isLoading}>
+        {isSearching || isLoading ? "Buscando..." : <Search className="h-4 w-4" />}
       </Button>
     </div>
   );

@@ -22,9 +22,9 @@ const VolumetriaTab: React.FC<VolumetriaTabProps> = ({
   onBuildingParamChange,
   onSetbackChange
 }) => {
-  // Calculando áreas para o gráfico de comparação usando análise real
-  const terrainArea = analysisResult.terrenoArea || terrainData?.area || 1000;
-  const builtArea = analysisResult.builtArea || (buildingParams.width * buildingParams.length * buildingParams.floors * 0.85);
+  // Usando diretamente os valores da análise
+  const terrainArea = analysisResult.terrenoArea || (terrainData?.area || 1000);
+  const builtArea = analysisResult.builtArea || (buildingParams.width * buildingParams.length * buildingParams.floors);
   const maxAllowedArea = analysisResult.maxAllowed || (terrainArea * urbanParams.coeficienteAproveitamento);
 
   return (

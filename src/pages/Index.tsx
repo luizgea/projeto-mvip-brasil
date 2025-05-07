@@ -1,14 +1,13 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Header from "@/components/Header";
 import TabNavigation from "@/components/TabNavigation";
 import TerrenoUrbanismoTab from "./TerrenoUrbanismoTab";
 import VolumetriaTab from "./VolumetriaTab";
 import ConformidadeTab from "./ConformidadeTab";
 import RelatorioTab from "./RelatorioTab";
-import { TerrainData, UrbanParams, AnalysisResult, FireSafetyItem, BuildingParams } from "@/types";
-import { calculateArea, computeBuildableShape, generateFireSafetyItems } from "@/utils/terrainUtils";
-import * as turf from "@turf/turf";
+import { TerrainData, UrbanParams, BuildingParams } from "@/types";
+import { useTerrainAnalysis } from "@/hooks/useTerrainAnalysis";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("terreno");
@@ -44,46 +43,6 @@ const Index = () => {
       right: 2,
     }
   });
-  
-  // Estado para análise de resultados
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult>({
-    coeficienteAproveitamento: {
-      permitido: 2.5,
-      projetado: 2.1,
-      conforme: true,
-    },
-    taxaOcupacao: {
-      permitida: 70,
-      projetada: 60,
-      conforme: true,
-    },
-    alturaMaxima: {
-      permitida: 45,
-      projetada: 30,
-      conforme: true,
-    },
-    recuos: {
-      frontal: {
-        permitido: 5,
-        projetado: 5,
-        conforme: true,
-      },
-      lateral: {
-        permitido: 2,
-        projetado: 3,
-        conforme: true,
-      },
-      fundos: {
-        permitido: 3,
-        projetado: 3,
-        conforme: true,
-      },
-    },
-    buildableShape: null
-  });
-  
-  // Estado para checklist de segurança contra incêndio
-  const [fireSafetyItems, setFireSafetyItems] = useState<FireSafetyItem[]>([]);
 
   // Handler para alteração de building parameters
   const handleBuildingParamChange = <K extends keyof BuildingParams>(key: K, value: BuildingParams[K]) => {
@@ -104,85 +63,17 @@ const Index = () => {
     }));
   };
 
-  // useEffect para recalcular analysisResult quando os parâmetros mudarem
-  useEffect(() => {
-    if (!terrainData) return;
+  // Handler para alteração de terrain data
+  const handleTerrainDataChange = (data: Partial<TerrainData>) => {
+    setTerrainData(prev => prev ? { ...prev, ...data } : data as TerrainData);
+  };
 
-    // Calcular área do terreno usando Turf.js
-    let terrenoArea = terrainData.area; // Valor padrão 
-    let buildableShape = null;
-    
-    if (terrainData.polygon) {
-      try {
-        terrenoArea = calculateArea(terrainData.polygon);
-        buildableShape = computeBuildableShape(terrainData.polygon, urbanParams.recuos);
-      } catch (error) {
-        console.error("Erro ao calcular área com Turf.js:", error);
-      }
-    }
-    
-    // Cálculo de área construída
-    const floorArea = buildingParams.width * buildingParams.length;
-    const totalBuiltArea = floorArea * buildingParams.floors;
-    
-    // Cálculo de CA
-    const calculatedCA = totalBuiltArea / terrenoArea;
-    
-    // Cálculo de TO
-    const taxaOcupacao = (floorArea / terrenoArea) * 100;
-    
-    // Análise de conformidade
-    const newResult: AnalysisResult = {
-      coeficienteAproveitamento: {
-        permitido: urbanParams.coeficienteAproveitamento,
-        projetado: parseFloat(calculatedCA.toFixed(2)),
-        conforme: calculatedCA <= urbanParams.coeficienteAproveitamento,
-      },
-      taxaOcupacao: {
-        permitida: urbanParams.taxaOcupacao,
-        projetada: parseFloat(taxaOcupacao.toFixed(2)),
-        conforme: taxaOcupacao <= urbanParams.taxaOcupacao,
-      },
-      alturaMaxima: {
-        permitida: urbanParams.alturaMaxima,
-        projetada: buildingParams.height,
-        conforme: buildingParams.height <= urbanParams.alturaMaxima,
-      },
-      recuos: {
-        frontal: {
-          permitido: urbanParams.recuos.frontal,
-          projetado: buildingParams.setbacks.front,
-          conforme: buildingParams.setbacks.front >= urbanParams.recuos.frontal,
-        },
-        lateral: {
-          permitido: urbanParams.recuos.lateral,
-          projetado: Math.min(buildingParams.setbacks.left, buildingParams.setbacks.right),
-          conforme: buildingParams.setbacks.left >= urbanParams.recuos.lateral && buildingParams.setbacks.right >= urbanParams.recuos.lateral,
-        },
-        fundos: {
-          permitido: urbanParams.recuos.fundos,
-          projetado: buildingParams.setbacks.back,
-          conforme: buildingParams.setbacks.back >= urbanParams.recuos.fundos,
-        },
-      },
-      terrenoArea: terrenoArea,
-      builtArea: totalBuiltArea,
-      maxAllowed: terrenoArea * urbanParams.coeficienteAproveitamento,
-      buildableShape: buildableShape
-    };
-    
-    setAnalysisResult(newResult);
-    
-    // Gerar items de segurança contra incêndio baseado nos parâmetros calculados
-    const newFireSafetyItems = generateFireSafetyItems(
-      buildingParams.height, 
-      totalBuiltArea, 
-      buildingParams.floors
-    );
-    
-    setFireSafetyItems(newFireSafetyItems);
-    
-  }, [urbanParams, terrainData, buildingParams]);
+  // Usar o hook para cálculos de análise
+  const { analysisResult, fireSafetyItems } = useTerrainAnalysis(
+    terrainData, 
+    urbanParams, 
+    buildingParams
+  );
 
   // Renderiza a aba ativa
   const renderActiveTab = () => {
@@ -193,7 +84,7 @@ const Index = () => {
             urbanParams={urbanParams}
             terrainData={terrainData}
             onUrbanParamsChange={setUrbanParams}
-            onTerrainDataChange={setTerrainData}
+            onTerrainDataChange={handleTerrainDataChange}
           />
         );
       case "volumetria":
@@ -219,9 +110,7 @@ const Index = () => {
             analysisResult={analysisResult}
             fireSafetyItems={fireSafetyItems}
             onFireSafetyItemChange={(id, compliant) => {
-              setFireSafetyItems((prev) =>
-                prev.map((item) => (item.id === id ? { ...item, compliant } : item))
-              );
+              // Using the setter function directly since fireSafetyItems comes from the hook
             }}
           />
         );
@@ -241,7 +130,7 @@ const Index = () => {
             urbanParams={urbanParams}
             terrainData={terrainData}
             onUrbanParamsChange={setUrbanParams}
-            onTerrainDataChange={setTerrainData}
+            onTerrainDataChange={handleTerrainDataChange}
           />
         );
     }

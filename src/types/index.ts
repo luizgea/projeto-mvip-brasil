@@ -23,11 +23,20 @@ export interface TerrainData {
     minima: number;
     maxima: number;
   };
-  coordinates?: [number, number]; // [latitude, longitude]
-  geometry?: any; // GeoJSON geometry for the terrain
-  polygon?: GeoJSON.Polygon; // GeoJSON polygon for calculations
+  coordinates?: [number, number]; // [latitude, longitude] 
   latitude?: number;
   longitude?: number;
+  // geometria do lote retornada pelo WFS (GeoJSON Polygon ou FeatureCollection)
+  polygon?: GeoJSON.FeatureCollection<GeoJSON.Polygon> | GeoJSON.Polygon;
+  // opcional: geometria unificada (pode apontar para polygon)
+  geometry?: GeoJSON.Polygon;
+  // dados de zoneamento (sigla e descrição)
+  zone?: { sigla: string; descricao: string };
+  // áreas para análise
+  terrenoArea?: number;
+  builtArea?: number;
+  maxAllowed?: number;
+  buildableShape?: GeoJSON.Polygon;
 }
 
 // Tipos para parâmetros da edificação

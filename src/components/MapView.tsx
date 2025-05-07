@@ -6,23 +6,29 @@ import "leaflet/dist/leaflet.css";
 import { TerrainData } from "@/types";
 
 interface MapViewProps {
-  coordinates?: [number, number]; // [latitude, longitude]
   terrainData?: TerrainData | null;
 }
 
-const MapView: React.FC<MapViewProps> = ({ coordinates = [-19.9167, -43.9345], terrainData }) => {
+const MapView: React.FC<MapViewProps> = ({ terrainData }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const geoJSONLayerRef = useRef<L.GeoJSON | null>(null);
 
+  // Initialize map once
   useEffect(() => {
     if (!mapRef.current) return;
 
     // Initialize the map only if it hasn't been initialized yet
     if (!leafletMapRef.current) {
-      // Create the map
-      const map = L.map(mapRef.current).setView(coordinates, 13);
+      // Default coordinates for Belo Horizonte
+      const defaultCoords: [number, number] = [-19.9167, -43.9345];
+      
+      // Create the map with EPSG:4326 projection
+      const map = L.map(mapRef.current, {
+        crs: L.CRS.EPSG3857 // Standard Web Mercator projection
+      }).setView(defaultCoords, 13);
+      
       leafletMapRef.current = map;
 
       // Add OpenStreetMap tile layer
@@ -40,9 +46,9 @@ const MapView: React.FC<MapViewProps> = ({ coordinates = [-19.9167, -43.9345], t
     };
   }, []); // Initialize map only once
 
-  // Update marker when coordinates change
+  // Update marker when terrainData changes
   useEffect(() => {
-    if (!leafletMapRef.current) return;
+    if (!leafletMapRef.current || !terrainData) return;
 
     // Remove previous marker if exists
     if (markerRef.current) {
@@ -50,36 +56,31 @@ const MapView: React.FC<MapViewProps> = ({ coordinates = [-19.9167, -43.9345], t
       markerRef.current = null;
     }
 
-    // Use terrainData coordinates if available, otherwise use provided coordinates
-    const displayCoords = terrainData?.coordinates || coordinates;
+    // Get coordinates from terrainData
+    let lat: number, lon: number;
     
-    // If we have specific latitude/longitude from the uploaded GeoJSON, use those
-    if (terrainData?.latitude && terrainData?.longitude) {
-      const latLng: [number, number] = [terrainData.latitude, terrainData.longitude];
-      
-      // Add a marker for the location
-      markerRef.current = L.marker(latLng)
-        .addTo(leafletMapRef.current)
-        .bindPopup("Localização selecionada")
-        .openPopup();
-      
-      // Center the map on the coordinates
-      leafletMapRef.current.setView(latLng, 15);
+    if (terrainData.latitude && terrainData.longitude) {
+      lat = terrainData.latitude;
+      lon = terrainData.longitude;
+    } else if (terrainData.coordinates) {
+      [lat, lon] = terrainData.coordinates;
     } else {
-      // Add a marker for the location
-      markerRef.current = L.marker(displayCoords)
-        .addTo(leafletMapRef.current)
-        .bindPopup("Localização selecionada")
-        .openPopup();
-      
-      // Center the map on the coordinates
-      leafletMapRef.current.setView(displayCoords, 15);
+      return; // No valid coordinates
     }
-  }, [coordinates, terrainData?.coordinates, terrainData?.latitude, terrainData?.longitude]);
+    
+    // Add a marker for the location
+    markerRef.current = L.marker([lat, lon])
+      .addTo(leafletMapRef.current)
+      .bindPopup("Localização selecionada")
+      .openPopup();
+    
+    // Center the map on the coordinates
+    leafletMapRef.current.setView([lat, lon], 15);
+  }, [terrainData?.latitude, terrainData?.longitude, terrainData?.coordinates]);
 
-  // Update GeoJSON layer when terrainData changes
+  // Update GeoJSON layer when terrainData.polygon changes
   useEffect(() => {
-    if (!leafletMapRef.current) return;
+    if (!leafletMapRef.current || !terrainData) return;
 
     // Remove previous GeoJSON layer if exists
     if (geoJSONLayerRef.current) {
@@ -88,29 +89,7 @@ const MapView: React.FC<MapViewProps> = ({ coordinates = [-19.9167, -43.9345], t
     }
 
     // When we have terrain data with a polygon, add it to the map
-    if (terrainData?.geometry) {
-      try {
-        geoJSONLayerRef.current = L.geoJSON(terrainData.geometry, {
-          style: {
-            color: "#4338ca",
-            weight: 2,
-            opacity: 0.8,
-            fillColor: "#818cf8",
-            fillOpacity: 0.4
-          }
-        }).addTo(leafletMapRef.current);
-        
-        // Fit map bounds to the GeoJSON layer
-        if (geoJSONLayerRef.current.getBounds().isValid()) {
-          leafletMapRef.current.fitBounds(geoJSONLayerRef.current.getBounds());
-        }
-      } catch (error) {
-        console.error("Erro ao renderizar geometria do terreno:", error);
-      }
-    }
-    
-    // If we have a specific polygon from GeoJSON upload, use that
-    if (terrainData?.polygon) {
+    if (terrainData.polygon) {
       try {
         geoJSONLayerRef.current = L.geoJSON(terrainData.polygon, {
           style: {
@@ -127,10 +106,28 @@ const MapView: React.FC<MapViewProps> = ({ coordinates = [-19.9167, -43.9345], t
           leafletMapRef.current.fitBounds(geoJSONLayerRef.current.getBounds());
         }
       } catch (error) {
-        console.error("Erro ao renderizar polígono do lote:", error);
+        console.error("Erro ao renderizar polígono do terreno:", error);
       }
     }
-  }, [terrainData?.geometry, terrainData?.polygon]);
+    
+    // If we have buildableShape, add it with a different style
+    if (terrainData.buildableShape) {
+      try {
+        L.geoJSON(terrainData.buildableShape, {
+          style: {
+            color: "#10b981", // green
+            weight: 2,
+            opacity: 0.8,
+            fillColor: "#34d399",
+            fillOpacity: 0.3,
+            dashArray: "5, 5" // dashed line
+          }
+        }).addTo(leafletMapRef.current);
+      } catch (error) {
+        console.error("Erro ao renderizar área edificável:", error);
+      }
+    }
+  }, [terrainData?.polygon, terrainData?.buildableShape]);
 
   return (
     <Card className="h-full">
