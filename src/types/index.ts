@@ -23,9 +23,9 @@ export interface TerrainData {
     minima: number;
     maxima: number;
   };
+  latitude: number;
+  longitude: number;
   coordinates?: [number, number]; // [latitude, longitude] 
-  latitude?: number;
-  longitude?: number;
   // geometria do lote retornada pelo WFS (GeoJSON Polygon ou FeatureCollection)
   polygon?: GeoJSON.FeatureCollection<GeoJSON.Polygon> | GeoJSON.Polygon;
   // opcional: geometria unificada (pode apontar para polygon)
@@ -99,7 +99,7 @@ export interface AnalysisResult {
   terrenoArea?: number;
   builtArea?: number;
   maxAllowed?: number;
-  buildableShape?: any;
+  buildableShape?: GeoJSON.Polygon;
 }
 
 // Tipos para checklist de segurança contra incêndio
