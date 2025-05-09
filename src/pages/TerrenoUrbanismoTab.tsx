@@ -1,4 +1,3 @@
-
 import React from "react";
 import AddressSearchInput from "@/components/AddressSearchInput";
 import MapView from "@/components/MapView";
